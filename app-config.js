@@ -1,10 +1,9 @@
-// ضع إعدادات Firebase هنا بعد إنشاء مشروع Firebase.
-// من Firebase Console > Project settings > Web app انسخ firebaseConfig واستبدل القيم أدناه.
+// Firebase configuration for FEMS Fellowship Training System
 window.FIREBASE_CONFIG = {
-  apiKey: "PUT_FIREBASE_API_KEY_HERE",
-  authDomain: "PUT_PROJECT_ID.firebaseapp.com",
-  projectId: "PUT_PROJECT_ID",
-  storageBucket: "PUT_PROJECT_ID.appspot.com",
-  messagingSenderId: "PUT_SENDER_ID",
-  appId: "PUT_APP_ID"
+  apiKey: "AIzaSyBuhckDO_xm_CryDiIGs-UsufM8gMkugXk",
+  authDomain: "fems-fellowship-system.firebaseapp.com",
+  projectId: "fems-fellowship-system",
+  storageBucket: "fems-fellowship-system.firebasestorage.app",
+  messagingSenderId: "117900186571",
+  appId: "1:117900186571:web:a128800f2c13497944dc4e"
 };
