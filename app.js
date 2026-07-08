@@ -332,9 +332,14 @@ async function deleteRejectedEvaluation(progressDocId){
 async function deleteRejectedEvaluationByToken(token){
   if(!firebaseReady) return;
   const e = evals.find(x => x.id === token || x.token === token);
-  if(!e || e.status !== "rejected"){ alert("يمكن حذف التقييمات المرفوضة فقط."); return; }
-  if(!confirm("سيتم حذف التقييم المرفوض نهائيًا من الأرشيف ومن جدول الإنجاز. هل أنت متأكد؟")) return;
-  try{ await deleteEvaluationEverywhere(e.id || token, e); }catch(err){ alert(err.message || "تعذر حذف التقييم."); }
+  if(!e){ alert("لم يتم العثور على سجل التقييم."); return; }
+  if(!confirm("سيتم حذف سجل التقييم نهائيًا من الأرشيف ومن جدول الإنجاز. هل أنت متأكد؟")) return;
+  try{
+    await deleteEvaluationEverywhere(e.id || token, e);
+    renderArchive();
+  }catch(err){
+    alert(err.message || "تعذر حذف التقييم.");
+  }
 }
 function renderArchive(){
   let html = `<table><thead><tr><th>التاريخ</th><th>الطالب</th><th>المستوى</th><th>الروتيشن</th><th>نوع النموذج</th><th>الدرجة</th><th>الحالة</th><th>المقيم</th><th>الجهة</th><th>النموذج الورقي</th><th>إجراء</th></tr></thead><tbody>`;
@@ -350,7 +355,7 @@ function renderArchive(){
       <td><span class="badge ${status}">${statusLabel(status)}</span>${e.rejectReason ? `<br><span class="small">${escapeHtml(e.rejectReason)}</span>` : ""}</td>
       <td>${escapeHtml(e.evaluatorName || "")}</td><td>${escapeHtml(e.evaluatorOrg || "")}</td>
       <td>${e.paperUrl ? `<a href="${e.paperUrl}" target="_blank">عرض</a> | <a href="${e.paperUrl}" target="_blank" download>تحميل</a>` : "—"}</td>
-      <td>${status === "rejected" ? `<button class="btn red" onclick="deleteRejectedEvaluationByToken('${e.id}')">حذف</button>` : "—"}</td>
+      <td><button class="btn red" onclick="deleteRejectedEvaluationByToken('${e.id}')">حذف</button></td>
     </tr>`;
   });
   html += `</tbody></table>`;
