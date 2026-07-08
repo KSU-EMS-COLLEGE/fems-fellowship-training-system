@@ -71,11 +71,13 @@ function renderStats(){
   const totalAssignments = Object.keys(SCHEDULES).reduce((sum, lvl) => sum + Object.values(SCHEDULES[lvl]||{}).reduce((a,b)=>a+b.length,0), 0);
   const approved = Object.values(progressMap).filter(p => p.status === "approved").length;
   const submitted = Object.values(progressMap).filter(p => p.status === "submitted").length;
+  const rejected = Object.values(progressMap).filter(p => p.status === "rejected").length;
   document.getElementById("stats").innerHTML = `
     <div class="stat"><b>${studentsCount}</b><span>إجمالي الطلاب</span></div>
     <div class="stat"><b>${totalAssignments}</b><span>إجمالي الروتيشنات</span></div>
-    <div class="stat"><b>${submitted}</b><span>تقييمات مستلمة</span></div>
+    <div class="stat"><b>${submitted}</b><span>بانتظار الاعتماد</span></div>
     <div class="stat"><b>${approved}</b><span>تقييمات معتمدة</span></div>
+    <div class="stat"><b>${rejected}</b><span>تقييمات مرفوضة</span></div>
   `;
 }
 function renderSchedule(){
@@ -144,8 +146,11 @@ function openEvalModal(level, studentId, monthIdx, rotation){
     <div>${p.score ? `<b>الدرجة:</b> ${p.score}/100<br>` : "لا توجد درجة بعد."}</div>
     <div>${p.evaluatorName ? `<b>المقيم:</b> ${p.evaluatorName}<br>` : ""}</div>
     <div>${p.evaluatorOrg ? `<b>الجهة:</b> ${p.evaluatorOrg}<br>` : ""}</div>
-    ${p.paperUrl ? `<a href="${p.paperUrl}" target="_blank">عرض النموذج الورقي</a><br>` : ""}
+    ${p.paperUrl ? `<a class="btn gray" href="${p.paperUrl}" target="_blank">عرض النموذج الورقي</a> <a class="btn gray" href="${p.paperUrl}" target="_blank" download>تحميل النموذج</a><br>` : ""}
+    ${p.status ? `<b>الحالة:</b> ${statusLabel(p.status)}<br>` : ""}
+    ${p.rejectReason ? `<b>سبب الرفض:</b> ${p.rejectReason}<br>` : ""}
     ${p.status === "submitted" ? `<br><button class="btn green" onclick="approveProgress('${id}')">اعتماد</button> <button class="btn red" onclick="rejectProgress('${id}')">رفض</button>` : ""}
+    ${p.status === "rejected" ? `<br><button class="btn red" onclick="deleteRejectedEvaluation('${id}')">حذف التقييم المرفوض</button>` : ""}
   `;
   document.getElementById("evalModal").className = "modal-backdrop open";
 }
@@ -176,27 +181,58 @@ async function createEvaluationLink(){
 }
 async function approveProgress(id){
   if(!firebaseReady) return;
+  const p = progressMap[id] || {};
   await db.collection("rotationProgress").doc(id).update({status:"approved", approvedAt: firebase.firestore.FieldValue.serverTimestamp()});
+  if(p.token){
+    await db.collection("evaluations").doc(p.token).update({status:"approved", approvedAt: firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+  }
   closeModal();
 }
 async function rejectProgress(id){
   if(!firebaseReady) return;
+  const p = progressMap[id] || {};
   const reason = prompt("سبب الرفض") || "";
   await db.collection("rotationProgress").doc(id).update({status:"rejected", rejectReason: reason, rejectedAt: firebase.firestore.FieldValue.serverTimestamp()});
+  if(p.token){
+    await db.collection("evaluations").doc(p.token).update({status:"rejected", rejectReason: reason, rejectedAt: firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+  }
   closeModal();
 }
+async function deleteRejectedEvaluation(progressDocId){
+  if(!firebaseReady) return;
+  const p = progressMap[progressDocId] || {};
+  if(p.status !== "rejected"){ alert("يمكن حذف التقييمات المرفوضة فقط."); return; }
+  if(!confirm("سيتم حذف التقييم المرفوض من الأرشيف ومن جدول الإنجاز. هل أنت متأكد؟")) return;
+  if(p.token){
+    await db.collection("evaluations").doc(p.token).delete().catch(()=>{});
+  }
+  await db.collection("rotationProgress").doc(progressDocId).delete();
+  closeModal();
+}
+async function deleteRejectedEvaluationByToken(token){
+  if(!firebaseReady) return;
+  const e = evals.find(x => x.id === token || x.token === token);
+  if(!e || e.status !== "rejected"){ alert("يمكن حذف التقييمات المرفوضة فقط."); return; }
+  if(!confirm("سيتم حذف التقييم المرفوض من الأرشيف ومن جدول الإنجاز. هل أنت متأكد؟")) return;
+  const pid = progressId(e.level, e.studentId, e.monthIdx, e.rotation);
+  await db.collection("evaluations").doc(token).delete().catch(()=>{});
+  await db.collection("rotationProgress").doc(pid).delete().catch(()=>{});
+}
 function renderArchive(){
-  let html = `<table><thead><tr><th>التاريخ</th><th>الطالب</th><th>المستوى</th><th>الروتيشن</th><th>نوع النموذج</th><th>الدرجة</th><th>المقيم</th><th>الجهة</th><th>النموذج الورقي</th></tr></thead><tbody>`;
-  if(evals.length === 0) html += `<tr><td colspan="9">لا توجد تقييمات مستلمة بعد.</td></tr>`;
+  let html = `<table><thead><tr><th>التاريخ</th><th>الطالب</th><th>المستوى</th><th>الروتيشن</th><th>نوع النموذج</th><th>الدرجة</th><th>الحالة</th><th>المقيم</th><th>الجهة</th><th>النموذج الورقي</th><th>إجراء</th></tr></thead><tbody>`;
+  if(evals.length === 0) html += `<tr><td colspan="11">لا توجد تقييمات مستلمة بعد.</td></tr>`;
   evals.forEach(e => {
+    const status = e.status || "submitted";
     html += `<tr>
       <td>${formatDate(e.submittedAt)}</td>
       <td>${e.studentName || ""}<br><span class="small">${e.studentId || ""}</span></td>
       <td>${e.level || ""}</td><td>${e.rotationDisplay || displayRot(e.rotation)}</td>
       <td>${e.formType === "internal" ? "داخلي" : "خارجي"}</td>
       <td><b>${e.score || 0}/100</b></td>
+      <td><span class="badge ${status}">${statusLabel(status)}</span>${e.rejectReason ? `<br><span class="small">${e.rejectReason}</span>` : ""}</td>
       <td>${e.evaluatorName || ""}</td><td>${e.evaluatorOrg || ""}</td>
-      <td>${e.paperUrl ? `<a href="${e.paperUrl}" target="_blank">فتح</a>` : "—"}</td>
+      <td>${e.paperUrl ? `<a href="${e.paperUrl}" target="_blank">عرض</a> | <a href="${e.paperUrl}" target="_blank" download>تحميل</a>` : "—"}</td>
+      <td>${status === "rejected" ? `<button class="btn red" onclick="deleteRejectedEvaluationByToken('${e.id}')">حذف</button>` : "—"}</td>
     </tr>`;
   });
   html += `</tbody></table>`;
@@ -211,8 +247,8 @@ function formatDate(ts){
   }catch(e){ return ""; }
 }
 function exportCSV(){
-  const rows = [["studentName","studentId","level","month","rotation","formType","score","evaluatorName","evaluatorOrg","paperUrl"]];
-  evals.forEach(e => rows.push([e.studentName,e.studentId,e.level,e.month,e.rotationDisplay||e.rotation,e.formType,e.score,e.evaluatorName,e.evaluatorOrg,e.paperUrl].map(v=>String(v||"").replace(/"/g,'""'))));
+  const rows = [["studentName","studentId","level","month","rotation","formType","score","status","evaluatorName","evaluatorOrg","paperUrl","rejectReason"]];
+  evals.forEach(e => rows.push([e.studentName,e.studentId,e.level,e.month,e.rotationDisplay||e.rotation,e.formType,e.score,e.status||"submitted",e.evaluatorName,e.evaluatorOrg,e.paperUrl,e.rejectReason].map(v=>String(v||"").replace(/"/g,'""'))));
   const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a");
