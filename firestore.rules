@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // قواعد مفتوحة لتشغيل روابط التقييم الخارجية بدون تسجيل دخول.
+    // مناسبة للتجربة أو التشغيل السريع. يمكن تشديدها لاحقاً إذا رغبت بإضافة كلمة مرور/تسجيل دخول.
+    match /evaluationLinks/{token} {
+      allow read, create, update: if true;
+    }
+    match /evaluations/{id} {
+      allow read, create, update: if true;
+    }
+    match /rotationProgress/{id} {
+      allow read, create, update, delete: if true;
+    }
+  }
+}

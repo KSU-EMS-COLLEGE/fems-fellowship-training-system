@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام تدريب الزمالة - FEMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>جامعة الملك سعود - نظام إدارة تدريب الزمالة</h1>
+  <p>FEMS Fellowship Training System</p>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div class="row space">
+      <div>
+        <h2>لوحة متابعة إنجاز الروتيشنات</h2>
+        <div class="small">البيانات الأساسية من نسخة المنصة الاحتياطية، والدرجات تحدث مباشرة عبر Firebase Firestore.</div>
+      </div>
+      <div class="row">
+        <button class="btn gold" onclick="exportCSV()">تصدير CSV</button>
+        <button class="btn gray" onclick="location.reload()">تحديث الصفحة</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="connectionNotice" class="notice">لم يتم ربط Firebase بعد أو لا تزال الإعدادات افتراضية. بعد وضع إعدادات Firebase في app-config.js ستعمل الروابط والتحديث المباشر.</section>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="setLevel('F1')" id="tab-F1">المستوى الأول F1</button>
+      <button class="tab" onclick="setLevel('F2')" id="tab-F2">المستوى الثاني F2</button>
+      <button class="tab" onclick="setLevel('F3')" id="tab-F3">المستوى الثالث F3</button>
+    </div>
+    <h3 id="scheduleTitle">جدول التدريب</h3>
+    <div class="tablewrap" id="scheduleTable"></div>
+  </section>
+
+  <section class="card">
+    <h3>متابعة إنجاز الروتيشنات والدرجات</h3>
+    <div class="tablewrap" id="completionTable"></div>
+  </section>
+
+  <section class="card">
+    <h3>أرشيف التقييمات المستلمة</h3>
+    <div class="tablewrap" id="archiveTable"></div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="evalModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>إنشاء رابط تقييم</h3>
+      <button class="btn red" onclick="closeModal()">إغلاق</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="app-config.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

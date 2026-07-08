@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نموذج تقييم الزمالة - FEMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>نموذج تقييم برنامج الزمالة</h1>
+  <p>يرجى تعبئة التقييم فقط حسب النموذج المعتمد</p>
+</header>
+
+<main class="eval-shell">
+  <div class="eval-card">
+    <div id="statusBox" class="notice">جاري تحميل رابط التقييم...</div>
+    <form id="evaluationForm" style="display:none" onsubmit="submitEvaluation(event)">
+      <div class="notice">
+        هذا الرابط مرتبط تلقائيًا بطالب وروتيشن داخل المنصة. لا تظهر بيانات الطالب للمقيم، فقط يتم إدخال التقييم.
+      </div>
+
+      <h2 id="formTitle">نموذج التقييم</h2>
+
+      <div class="grid2">
+        <div class="field"><label>اسم المقيم *</label><input id="evaluatorName" required></div>
+        <div class="field"><label>المسمى الوظيفي</label><input id="evaluatorTitle"></div>
+        <div class="field"><label>الجهة / المستشفى / القسم *</label><input id="evaluatorOrg" required></div>
+        <div class="field"><label>البريد الإلكتروني للمقيم</label><input id="evaluatorEmail" type="email"></div>
+        <div class="field"><label>رقم التواصل</label><input id="evaluatorPhone"></div>
+        <div class="field"><label>تاريخ التقييم *</label><input id="evaluationDate" type="date" required></div>
+      </div>
+
+      <h3>بنود التقييم</h3>
+      <div id="criteriaBox"></div>
+
+      <div class="field">
+        <label>رابط نموذج التقييم الورقي الموقع/المختوم إن وجد</label>
+        <input id="paperUrl" placeholder="ضع رابط Google Drive / OneDrive للنموذج الورقي">
+      </div>
+
+      <div class="field">
+        <label>ملاحظات المقيم</label>
+        <textarea id="comments" placeholder="ملاحظات اختيارية"></textarea>
+      </div>
+
+      <div class="totalbox">الدرجة النهائية: <span id="totalScore">0</span> / 100</div>
+      <br>
+      <button class="btn green" type="submit">إرسال التقييم</button>
+    </form>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="app-config.js"></script>
+<script src="data.js"></script>
+<script src="evaluation.js"></script>
+</body>
+</html>
