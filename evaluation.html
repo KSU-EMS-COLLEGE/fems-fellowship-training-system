@@ -37,8 +37,11 @@
       <div id="criteriaBox"></div>
 
       <div class="field">
-        <label>رابط نموذج التقييم الورقي الموقع/المختوم إن وجد</label>
-        <input id="paperUrl" placeholder="ضع رابط Google Drive / OneDrive للنموذج الورقي">
+        <label>إرفاق نموذج التقييم الورقي الموقع/المختوم *</label>
+        <input id="paperFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+        <input id="paperUrl" type="hidden">
+        <div class="small">المسموح: PDF أو صورة JPG/PNG. الحد المقترح: 10MB.</div>
+        <div id="uploadStatus" class="small"></div>
       </div>
 
       <div class="field">
