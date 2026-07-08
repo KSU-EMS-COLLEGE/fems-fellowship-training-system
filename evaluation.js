@@ -1,4 +1,3 @@
-
 const EXTERNAL_CRITERIA = [
   "Knowledge","History & Physical Exam","Judgment & Decisions","Emergency Care","Records & Reports",
   "Reliability & Discipline","Relations with Staff","Patients' Advocacy","Supervisory Skills","Ethics"
@@ -18,12 +17,26 @@ let token = new URLSearchParams(location.search).get("token");
 
 function displayRot(r){ return (window.FEMS_DATA.ROT_DISPLAY || {})[r] || r || ""; }
 function safeId(v){ return String(v || "").replace(/[^\w\u0600-\u06FF-]+/g, "_"); }
-function progressId(level, studentId, monthIdx, rotation){ return [level, studentId, monthIdx, safeId(rotation)].join("__"); }
 function isFirebaseConfigured(){
   const c = window.FIREBASE_CONFIG || {};
   return c.apiKey && !String(c.apiKey).includes("PUT_") && c.projectId && !String(c.projectId).includes("PUT_");
 }
-function showStatus(html, cls="notice"){ document.getElementById("statusBox").className = cls; document.getElementById("statusBox").innerHTML = html; }
+function isDriveUploadConfigured(){
+  const u = window.DRIVE_UPLOAD_WEB_APP_URL || "";
+  return u && !String(u).includes("PUT_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") && /^https:\/\//.test(u);
+}
+function showStatus(html, cls="notice"){
+  const box = document.getElementById("statusBox");
+  box.style.display = "block";
+  box.className = cls;
+  box.innerHTML = html;
+}
+function setUploadStatus(text, cls="small"){
+  const el = document.getElementById("uploadStatus");
+  if(!el) return;
+  el.className = cls;
+  el.textContent = text || "";
+}
 async function init(){
   if(!token){ showStatus("الرابط غير صحيح: لا يوجد رمز تقييم.", "errbox"); return; }
   if(!isFirebaseConfigured()){ showStatus("لم يتم ربط Firebase بعد. يرجى التواصل مع إدارة البرنامج.", "errbox"); return; }
@@ -47,6 +60,8 @@ function renderForm(){
   const isInternal = linkDoc.formType === "internal";
   document.getElementById("formTitle").textContent = isInternal ? "نموذج التقييم الداخلي" : "نموذج التقييم الخارجي";
   document.getElementById("evaluationDate").valueAsDate = new Date();
+  const fileInput = document.getElementById("paperFile");
+  if(fileInput && window.REQUIRE_PAPER_FILE_UPLOAD !== false) fileInput.required = true;
   const criteria = isInternal ? INTERNAL_CRITERIA : EXTERNAL_CRITERIA;
   let html = "";
   criteria.forEach((c, i) => {
@@ -78,38 +93,97 @@ function calcTotal(){
   document.getElementById("totalScore").textContent = total;
   return total;
 }
-async function submitEvaluation(ev){
-  ev.preventDefault();
-  if(!db || !linkDoc){ return; }
-  const score = calcTotal();
-  const inputs = [...document.querySelectorAll(".scoreInput")];
-  const scores = inputs.map(i => ({criterion: i.dataset.criterion, value: i.value}));
-  if(scores.some(s => !s.value)){ alert("يرجى تعبئة جميع البنود."); return; }
-  const payload = {
+function readFileAsDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("تعذر قراءة الملف."));
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadPaperFileIfNeeded(){
+  const input = document.getElementById("paperFile");
+  const existing = document.getElementById("paperUrl").value.trim();
+  if(existing) return existing;
+  const file = input && input.files && input.files[0];
+  if(!file){
+    if(window.REQUIRE_PAPER_FILE_UPLOAD !== false) throw new Error("يرجى إرفاق نموذج التقييم الورقي الموقع/المختوم.");
+    return "";
+  }
+  const allowed = ["application/pdf","image/jpeg","image/png"];
+  if(!allowed.includes(file.type)) throw new Error("نوع الملف غير مسموح. ارفع PDF أو JPG أو PNG فقط.");
+  const maxMb = 10;
+  if(file.size > maxMb * 1024 * 1024) throw new Error(`حجم الملف أكبر من ${maxMb}MB.`);
+  if(!isDriveUploadConfigured()) throw new Error("لم يتم تفعيل رفع الملفات بعد. يرجى التواصل مع إدارة البرنامج.");
+
+  setUploadStatus("جاري رفع النموذج الورقي... لا تغلق الصفحة.", "notice");
+  const dataUrl = await readFileAsDataUrl(file);
+  const fileBase64 = String(dataUrl).split(",")[1] || "";
+  const body = {
     token,
+    fileName: file.name,
+    mimeType: file.type,
+    fileBase64,
+    evaluatorName: document.getElementById("evaluatorName").value.trim(),
+    evaluatorOrg: document.getElementById("evaluatorOrg").value.trim(),
+    evaluationDate: document.getElementById("evaluationDate").value,
     formType: linkDoc.formType,
     level: linkDoc.level,
     studentId: linkDoc.studentId,
     studentName: linkDoc.studentName,
-    monthIdx: linkDoc.monthIdx,
     month: linkDoc.month,
-    rotation: linkDoc.rotation,
-    rotationDisplay: linkDoc.rotationDisplay || displayRot(linkDoc.rotation),
-    score,
-    scores,
-    evaluatorName: document.getElementById("evaluatorName").value.trim(),
-    evaluatorTitle: document.getElementById("evaluatorTitle").value.trim(),
-    evaluatorOrg: document.getElementById("evaluatorOrg").value.trim(),
-    evaluatorEmail: document.getElementById("evaluatorEmail").value.trim(),
-    evaluatorPhone: document.getElementById("evaluatorPhone").value.trim(),
-    evaluationDate: document.getElementById("evaluationDate").value,
-    paperUrl: document.getElementById("paperUrl").value.trim(),
-    comments: document.getElementById("comments").value.trim(),
-    userAgent: navigator.userAgent,
-    submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    rotation: linkDoc.rotationDisplay || displayRot(linkDoc.rotation)
   };
-  const pid = [linkDoc.level, linkDoc.studentId, linkDoc.monthIdx, safeId(linkDoc.rotation)].join("__");
+  const res = await fetch(window.DRIVE_UPLOAD_WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let json;
+  try{ json = JSON.parse(text); }catch(e){ throw new Error("تعذر قراءة استجابة رفع الملف. تأكد من نشر Google Apps Script كـ Web app."); }
+  if(!json.ok) throw new Error(json.error || "فشل رفع الملف.");
+  const url = json.fileUrl || json.downloadUrl || "";
+  document.getElementById("paperUrl").value = url;
+  setUploadStatus("تم رفع النموذج الورقي بنجاح.", "successbox");
+  return url;
+}
+async function submitEvaluation(ev){
+  ev.preventDefault();
+  if(!db || !linkDoc){ return; }
+  const submitBtn = ev.target.querySelector('button[type="submit"]');
+  if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = "جاري الإرسال..."; }
   try{
+    const score = calcTotal();
+    const inputs = [...document.querySelectorAll(".scoreInput")];
+    const scores = inputs.map(i => ({criterion: i.dataset.criterion, value: i.value}));
+    if(scores.some(s => !s.value)) throw new Error("يرجى تعبئة جميع البنود.");
+    const paperUrl = await uploadPaperFileIfNeeded();
+    const payload = {
+      token,
+      status: "submitted",
+      formType: linkDoc.formType,
+      level: linkDoc.level,
+      studentId: linkDoc.studentId,
+      studentName: linkDoc.studentName,
+      monthIdx: linkDoc.monthIdx,
+      month: linkDoc.month,
+      rotation: linkDoc.rotation,
+      rotationDisplay: linkDoc.rotationDisplay || displayRot(linkDoc.rotation),
+      score,
+      scores,
+      evaluatorName: document.getElementById("evaluatorName").value.trim(),
+      evaluatorTitle: document.getElementById("evaluatorTitle").value.trim(),
+      evaluatorOrg: document.getElementById("evaluatorOrg").value.trim(),
+      evaluatorEmail: document.getElementById("evaluatorEmail").value.trim(),
+      evaluatorPhone: document.getElementById("evaluatorPhone").value.trim(),
+      evaluationDate: document.getElementById("evaluationDate").value,
+      paperUrl,
+      comments: document.getElementById("comments").value.trim(),
+      userAgent: navigator.userAgent,
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const pid = [linkDoc.level, linkDoc.studentId, linkDoc.monthIdx, safeId(linkDoc.rotation)].join("__");
     await db.collection("evaluations").doc(token).set(payload);
     await db.collection("rotationProgress").doc(pid).set({
       ...payload,
@@ -122,10 +196,12 @@ async function submitEvaluation(ev){
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById("evaluationForm").style.display = "none";
-    showStatus("تم إرسال التقييم بنجاح. شكرًا لكم.", "successbox");
+    showStatus("تم إرسال التقييم ورفع النموذج الورقي بنجاح. شكرًا لكم.", "successbox");
   }catch(e){
     console.error(e);
-    alert("تعذر إرسال التقييم: " + e.message);
+    alert(e.message || "تعذر إرسال التقييم.");
+    setUploadStatus("", "small");
+    if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = "إرسال التقييم"; }
   }
 }
 window.calcTotal = calcTotal;
