@@ -16,6 +16,20 @@ let linkDoc = null;
 let token = new URLSearchParams(location.search).get("token");
 
 function displayRot(r){ return (window.FEMS_DATA.ROT_DISPLAY || {})[r] || r || ""; }
+
+function setText(id, value){
+  const el = document.getElementById(id);
+  if(el) el.textContent = value || "—";
+}
+function renderAssignmentInfo(){
+  if(!linkDoc) return;
+  const rotationName = linkDoc.rotationDisplay || displayRot(linkDoc.rotation) || linkDoc.rotation || "—";
+  setText("infoStudentName", linkDoc.studentName || "—");
+  setText("infoStudentId", linkDoc.studentId || "—");
+  setText("infoLevel", linkDoc.level || "—");
+  setText("infoMonth", linkDoc.month || "—");
+  setText("infoRotation", rotationName);
+}
 function safeId(v){ return String(v || "").replace(/[^\w\u0600-\u06FF-]+/g, "_"); }
 function isFirebaseConfigured(){
   const c = window.FIREBASE_CONFIG || {};
@@ -59,6 +73,7 @@ async function init(){
 function renderForm(){
   const isInternal = linkDoc.formType === "internal";
   document.getElementById("formTitle").textContent = isInternal ? "نموذج التقييم الداخلي" : "نموذج التقييم الخارجي";
+  renderAssignmentInfo();
   document.getElementById("evaluationDate").valueAsDate = new Date();
   const fileInput = document.getElementById("paperFile");
   if(fileInput && window.REQUIRE_PAPER_FILE_UPLOAD !== false) fileInput.required = true;
