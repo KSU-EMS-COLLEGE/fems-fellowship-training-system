@@ -25,13 +25,34 @@
       <h2 id="formTitle">نموذج التقييم</h2>
 
       <section id="assignmentInfo" class="assignment-info" aria-label="بيانات التقييم المطلوبة">
-        <h3>بيانات التقييم المطلوبة</h3>
+        <div class="assignment-head">
+          <span class="assignment-icon">📋</span>
+          <div>
+            <h3>بيانات التقييم المطلوبة</h3>
+            <p>يرجى التأكد من بيانات الطالب والروتيشن قبل تعبئة التقييم.</p>
+          </div>
+        </div>
         <div class="assignment-grid">
-          <div><span>اسم الطالب</span><b id="infoStudentName">—</b></div>
-          <div><span>الرقم الجامعي</span><b id="infoStudentId">—</b></div>
-          <div><span>المستوى</span><b id="infoLevel">—</b></div>
-          <div><span>الفترة / الشهر</span><b id="infoMonth">—</b></div>
-          <div class="wide"><span>الروتيشن المطلوب تقييمه</span><b id="infoRotation">—</b></div>
+          <div class="assignment-item">
+            <span class="info-label">اسم الطالب</span>
+            <b class="info-value" id="infoStudentName">—</b>
+          </div>
+          <div class="assignment-item">
+            <span class="info-label">الرقم الجامعي</span>
+            <b class="info-value ltr-value" id="infoStudentId">—</b>
+          </div>
+          <div class="assignment-item">
+            <span class="info-label">المستوى</span>
+            <b class="info-value ltr-value" id="infoLevel">—</b>
+          </div>
+          <div class="assignment-item">
+            <span class="info-label">الفترة / الشهر</span>
+            <b class="info-value" id="infoMonth">—</b>
+          </div>
+          <div class="assignment-item wide">
+            <span class="info-label">الروتيشن المطلوب تقييمه</span>
+            <b class="info-value" id="infoRotation">—</b>
+          </div>
         </div>
       </section>
 
